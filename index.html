@@ -41,6 +41,11 @@ nav .chip{font-family:'Quicksand',sans-serif;font-weight:700;font-size:.8rem;col
 nav .chip:hover{background:rgba(146,31,69,.14)}
 nav .chip.active{color:#fff;background:linear-gradient(135deg,var(--rose),var(--magenta));
   box-shadow:0 4px 12px rgba(146,31,69,.35);}
+#sync-status{font-family:'Quicksand',sans-serif;font-weight:700;font-size:.68rem;letter-spacing:.1em;
+  text-transform:uppercase;padding:.28rem .65rem;border-radius:30px;margin-left:auto;white-space:nowrap;}
+#sync-status.live{background:rgba(146,31,69,.12);color:var(--rose-deep);}
+#sync-status.offline{background:rgba(87,18,22,.08);color:var(--ink-soft);}
+#sync-status.error{background:rgba(87,18,22,.15);color:var(--grape);}
 
 /* ── HERO ── */
 header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
@@ -208,6 +213,7 @@ footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-famil
 <nav>
   <span class="brand">Esther<span> · Animated Study</span></span>
   <div class="chips" id="chips"></div>
+  <span id="sync-status" class="offline" title="Edit sync status">Connecting…</span>
 </nav>
 
 <header class="hero">
@@ -242,8 +248,8 @@ footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-famil
   <p>The name of God does not appear once in the entire book of Esther. Yet His fingerprints are everywhere — in the timing, the "coincidences," the sleepless night of a king. This is the book's great teaching device: <em style="color:var(--ink-soft)">providence works in the shadows.</em></p>
   <div class="block-label">How the Animations Work</div>
   <p>Each chapter has a live animated scene below its heading. The animations play on loop automatically. Click the <strong>⏸ button</strong> (bottom right of each scene) to pause or resume. Click the scene itself to toggle pause too. Great for projecting — the scenes keep moving as you discuss.</p>
-  <p class="edit-note"><b>Your notes:</b> Application and Discussion sections are editable — click to type, use <b>+ Add question</b> for new items, or <b>×</b> to remove. Changes save automatically in your browser.</p>
-  <button type="button" class="btn-reset" id="reset-edits">Reset all my edits</button>
+  <p class="edit-note"><b>Your notes:</b> Application and Discussion sections are editable — click to type, use <b>+ Add question</b> for new items, or <b>×</b> to remove. When <b>Live sync</b> shows in the nav, changes save for <em>everyone</em> viewing this site.</p>
+  <button type="button" class="btn-reset" id="reset-edits">Reset all edits (everyone)</button>
 </section>
 
 <div class="divider"></div>
@@ -260,6 +266,8 @@ footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-famil
 <button id="top" aria-label="Back to top">↑</button>
 <div id="save-toast" role="status" aria-live="polite">Saved</div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 <script>
 // ─────────────────────────────────────────────
 // SCENE DEFINITIONS  (pure inline SVG+CSS animation)
@@ -1165,11 +1173,14 @@ const chapters = [
 ];
 
 // ─────────────────────────────────────────────
-// EDITABLE APPLICATION & DISCUSSION (localStorage)
+// EDITABLE APPLICATION & DISCUSSION (cloud + fallback)
 // ─────────────────────────────────────────────
 const STORAGE_KEY = 'esther-study-edits-v1';
 let debounceTimer;
 let toastTimer;
+let sharedEdits = {};
+let supabaseClient = null;
+let realtimeChannel = null;
 
 function getEdits() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
@@ -1177,11 +1188,83 @@ function getEdits() {
 }
 
 function getChapterContent(c) {
-  const saved = getEdits()[c.n];
+  const saved = sharedEdits[c.n];
   return {
     app: saved?.app ?? c.app,
     questions: saved?.questions?.length ? saved.questions : [...c.questions]
   };
+}
+
+function setSyncStatus(mode, label) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.className = mode;
+  el.textContent = label;
+}
+
+function initSupabase() {
+  const cfg = window.ESTHER_CONFIG || {};
+  const url = (cfg.supabaseUrl || '').trim();
+  const key = (cfg.supabaseAnonKey || '').trim();
+  if (!url || !key || typeof supabase === 'undefined') return null;
+  return supabase.createClient(url, key);
+}
+
+async function loadSharedEdits() {
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.from('chapter_edits').select('chapter, app, questions');
+    if (error) {
+      console.error(error);
+      setSyncStatus('error', 'Sync error');
+      sharedEdits = getEdits();
+      return;
+    }
+    sharedEdits = {};
+    (data || []).forEach(row => {
+      sharedEdits[row.chapter] = {
+        app: row.app || '',
+        questions: Array.isArray(row.questions) ? row.questions : []
+      };
+    });
+    setSyncStatus('live', 'Live sync');
+    return;
+  }
+  sharedEdits = getEdits();
+  setSyncStatus('offline', 'This device only');
+}
+
+function isChapterBeingEdited(ch) {
+  const active = document.activeElement;
+  if (!active) return false;
+  const sec = document.getElementById('ch' + ch);
+  return sec && sec.contains(active) && active.closest('.editable-app, .q-text');
+}
+
+function applyRemoteChapter(ch, data) {
+  if (isChapterBeingEdited(ch)) return;
+  const appEl = document.querySelector(`.editable-app[data-ch="${ch}"]`);
+  const ol = document.querySelector(`ol.editable-q[data-ch="${ch}"]`);
+  if (!appEl || !ol) return;
+  appEl.innerText = data.app || '';
+  ol.innerHTML = buildQuestionItems(data.questions || [], ch);
+  ol.querySelectorAll('.q-item').forEach(li => bindQuestionItem(li, ch));
+  sharedEdits[ch] = data;
+}
+
+function subscribeRealtime() {
+  if (!supabaseClient) return;
+  realtimeChannel = supabaseClient
+    .channel('esther-edits')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'chapter_edits' }, payload => {
+      const row = payload.new;
+      if (!row || row.chapter == null) return;
+      applyRemoteChapter(row.chapter, {
+        app: row.app || '',
+        questions: Array.isArray(row.questions) ? row.questions : []
+      });
+      showSaved('Updated from cloud');
+    })
+    .subscribe();
 }
 
 function escapeHtml(s) {
@@ -1210,18 +1293,39 @@ function readChapterFromDOM(ch) {
   };
 }
 
-function showSaved() {
+function showSaved(msg) {
   const toast = document.getElementById('save-toast');
+  toast.textContent = msg || 'Saved';
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
 }
 
-function persistChapter(ch) {
+async function persistChapter(ch) {
+  const data = readChapterFromDOM(ch);
+  sharedEdits[ch] = data;
+
+  if (supabaseClient) {
+    showSaved('Saving…');
+    const { error } = await supabaseClient.from('chapter_edits').upsert({
+      chapter: parseInt(ch, 10),
+      app: data.app,
+      questions: data.questions,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'chapter' });
+    if (error) {
+      console.error(error);
+      showSaved('Save failed');
+      return;
+    }
+    showSaved('Saved for everyone');
+    return;
+  }
+
   const all = getEdits();
-  all[ch] = readChapterFromDOM(ch);
+  all[ch] = data;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-  showSaved();
+  showSaved('Saved on this device');
 }
 
 function scheduleSave(ch) {
@@ -1282,19 +1386,33 @@ function bindEditableSections() {
   });
 }
 
-function resetAllEdits() {
-  if (!confirm('Reset Application and Discussion for all chapters back to the original text?')) return;
+async function resetAllEdits() {
+  const msg = supabaseClient
+    ? 'Reset Application and Discussion for ALL chapters for everyone? This cannot be undone.'
+    : 'Reset Application and Discussion for all chapters back to the original text?';
+  if (!confirm(msg)) return;
+
+  if (supabaseClient) {
+    const { error } = await supabaseClient.from('chapter_edits').delete().gte('chapter', 1);
+    if (error) {
+      alert('Could not reset cloud edits. Check the console for details.');
+      console.error(error);
+      return;
+    }
+  }
   localStorage.removeItem(STORAGE_KEY);
   location.reload();
 }
-
-document.getElementById('reset-edits').addEventListener('click', resetAllEdits);
 
 // ─────────────────────────────────────────────
 // BUILD DOM
 // ─────────────────────────────────────────────
 const wrap = document.getElementById('chapters');
 const chipBar = document.getElementById('chips');
+
+function buildAllChapters() {
+  wrap.innerHTML = '';
+  chipBar.innerHTML = '';
 
 chapters.forEach((c, i) => {
   const content = getChapterContent(c);
@@ -1353,7 +1471,17 @@ chapters.forEach((c, i) => {
   wrap.appendChild(sec);
 });
 
-bindEditableSections();
+  bindEditableSections();
+}
+
+async function initApp() {
+  supabaseClient = initSupabase();
+  await loadSharedEdits();
+  buildAllChapters();
+  subscribeRealtime();
+  initScrollAndReveal();
+  document.getElementById('reset-edits').addEventListener('click', resetAllEdits);
+}
 
 // ─────────────────────────────────────────────
 // PAUSE / PLAY logic
@@ -1389,30 +1517,34 @@ chapters.forEach(c => {
 // ─────────────────────────────────────────────
 // INTERSECTION OBSERVER — reveal + active chip
 // ─────────────────────────────────────────────
-const io = new IntersectionObserver(entries => {
-  entries.forEach(x => {
-    if (x.isIntersecting) { x.target.classList.add('in'); io.unobserve(x.target); }
-  });
-}, {threshold:.12});
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+function initScrollAndReveal() {
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(x => {
+      if (x.isIntersecting) { x.target.classList.add('in'); io.unobserve(x.target); }
+    });
+  }, {threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-const secs = [...document.querySelectorAll('section[id^=ch]')];
-const allChips = [...document.querySelectorAll('.chip')];
-const bar = document.getElementById('progress');
-const topBtn = document.getElementById('top');
+  const bar = document.getElementById('progress');
+  const topBtn = document.getElementById('top');
 
-function onScroll() {
-  const h = document.documentElement;
-  bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
-  topBtn.classList.toggle('show', h.scrollTop > 600);
-  let cur = -1;
-  secs.forEach((s, idx) => { if (s.getBoundingClientRect().top < 160) cur = idx; });
-  allChips.forEach((ch, idx) => ch.classList.toggle('active', idx === cur));
+  function onScroll() {
+    const h = document.documentElement;
+    const secs = [...document.querySelectorAll('section[id^=ch]')];
+    const allChips = [...document.querySelectorAll('.chip')];
+    bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    topBtn.classList.toggle('show', h.scrollTop > 600);
+    let cur = -1;
+    secs.forEach((s, idx) => { if (s.getBoundingClientRect().top < 160) cur = idx; });
+    allChips.forEach((ch, idx) => ch.classList.toggle('active', idx === cur));
+  }
+
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+  topBtn.onclick = () => window.scrollTo({top:0, behavior:'smooth'});
 }
 
-document.addEventListener('scroll', onScroll, {passive:true});
-onScroll();
-topBtn.onclick = () => window.scrollTo({top:0, behavior:'smooth'});
+initApp();
 </script>
 </body>
 </html>
