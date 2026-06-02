@@ -123,9 +123,38 @@ p{margin-bottom:1rem;color:var(--ink);}
 .panel{border-radius:18px;padding:1.4rem 1.6rem;margin-top:1rem;}
 .panel.app{background:linear-gradient(135deg,#FFF5EE,#FAD5C2);border:1.5px solid rgba(186,64,115,.25);}
 .panel.app .block-label{color:var(--rose-deep)} .panel.app .block-label::before{background:linear-gradient(90deg,var(--rose),var(--magenta))}
-ol.q{margin:.4rem 0 0 1.1rem;}
-ol.q li{margin-bottom:.75rem;color:var(--ink-soft);padding-left:.3rem;}
-ol.q li::marker{color:var(--rose-deep);font-family:'Quicksand',sans-serif;font-weight:700;}
+ol.q{margin:.4rem 0 0 0;list-style:none;padding:0;}
+ol.q .q-item{display:flex;align-items:flex-start;gap:.5rem;margin-bottom:.75rem;
+  padding:.65rem .75rem;border-radius:12px;border:1.5px dashed transparent;transition:.2s;}
+ol.q .q-item:hover{border-color:rgba(186,64,115,.25);background:rgba(250,213,194,.25);}
+ol.q .q-item:focus-within{border-color:rgba(146,31,69,.35);background:rgba(255,245,238,.9);}
+ol.q .q-num{font-family:'Quicksand',sans-serif;font-weight:700;color:var(--rose-deep);min-width:1.4rem;padding-top:.15rem;}
+ol.q .q-text{flex:1;color:var(--ink-soft);line-height:1.65;outline:none;min-height:1.4em;}
+ol.q .q-text:empty::before{content:'Type a question…';color:var(--rose);opacity:.45;}
+.q-remove{flex-shrink:0;width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;
+  background:rgba(146,31,69,.12);color:var(--rose-deep);font-size:1.15rem;line-height:1;
+  font-family:'Quicksand',sans-serif;font-weight:700;transition:.2s;margin-top:.05rem;}
+.q-remove:hover{background:var(--rose-deep);color:#fff;}
+.editable-app{outline:none;color:var(--ink-soft);line-height:1.75;margin:0;min-height:3rem;
+  padding:.25rem 0;border-radius:8px;cursor:text;}
+.editable-app:focus{background:rgba(255,255,255,.45);box-shadow:0 0 0 2px rgba(186,64,115,.2);}
+.editable-app:empty::before{content:'Click to add application notes…';color:var(--rose);opacity:.45;}
+.block-label-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin:1.8rem 0 .7rem;}
+.block-label-row .block-label{margin:0;}
+.btn-add-q,.btn-reset{font-family:'Quicksand',sans-serif;font-weight:700;font-size:.72rem;letter-spacing:.08em;
+  text-transform:uppercase;border:1.5px solid rgba(146,31,69,.3);background:rgba(255,255,255,.7);
+  color:var(--rose-deep);border-radius:30px;padding:.35rem .85rem;cursor:pointer;transition:.2s;}
+.btn-add-q:hover,.btn-reset:hover{background:var(--rose-deep);color:#fff;border-color:var(--rose-deep);}
+.edit-note{font-size:.92rem;color:var(--ink-soft);background:rgba(250,213,194,.35);border:1px solid rgba(186,64,115,.2);
+  border-radius:14px;padding:1rem 1.2rem;margin:1rem 0 0;}
+.edit-note b{color:var(--magenta);}
+#save-toast{position:fixed;bottom:5.5rem;right:1.2rem;z-index:85;font-family:'Quicksand',sans-serif;font-weight:700;
+  font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;background:var(--grape);color:var(--cream);
+  padding:.5rem 1rem;border-radius:30px;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none;}
+#save-toast.show{opacity:1;transform:none;}
+.panel.app .edit-tag{font-family:'Quicksand',sans-serif;font-weight:600;font-size:.65rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--rose);opacity:.7;margin-left:auto;}
+.panel.app .block-label-row{margin-top:0;margin-bottom:.5rem;}
 .divider{height:3px;border-radius:3px;margin:3.5rem 0;
   background:linear-gradient(90deg,transparent,var(--grape),var(--magenta),var(--rose),transparent);opacity:.5;}
 footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-family:'Quicksand',sans-serif;font-weight:600;letter-spacing:.06em;font-size:.9rem;}
@@ -213,6 +242,8 @@ footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-famil
   <p>The name of God does not appear once in the entire book of Esther. Yet His fingerprints are everywhere — in the timing, the "coincidences," the sleepless night of a king. This is the book's great teaching device: <em style="color:var(--ink-soft)">providence works in the shadows.</em></p>
   <div class="block-label">How the Animations Work</div>
   <p>Each chapter has a live animated scene below its heading. The animations play on loop automatically. Click the <strong>⏸ button</strong> (bottom right of each scene) to pause or resume. Click the scene itself to toggle pause too. Great for projecting — the scenes keep moving as you discuss.</p>
+  <p class="edit-note"><b>Your notes:</b> Application and Discussion sections are editable — click to type, use <b>+ Add question</b> for new items, or <b>×</b> to remove. Changes save automatically in your browser.</p>
+  <button type="button" class="btn-reset" id="reset-edits">Reset all my edits</button>
 </section>
 
 <div class="divider"></div>
@@ -227,6 +258,7 @@ footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-famil
 </main>
 
 <button id="top" aria-label="Back to top">↑</button>
+<div id="save-toast" role="status" aria-live="polite">Saved</div>
 
 <script>
 // ─────────────────────────────────────────────
@@ -1133,13 +1165,140 @@ const chapters = [
 ];
 
 // ─────────────────────────────────────────────
+// EDITABLE APPLICATION & DISCUSSION (localStorage)
+// ─────────────────────────────────────────────
+const STORAGE_KEY = 'esther-study-edits-v1';
+let debounceTimer;
+let toastTimer;
+
+function getEdits() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+
+function getChapterContent(c) {
+  const saved = getEdits()[c.n];
+  return {
+    app: saved?.app ?? c.app,
+    questions: saved?.questions?.length ? saved.questions : [...c.questions]
+  };
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildQuestionItems(questions, ch) {
+  return questions.map((q, idx) => `
+    <li class="q-item" data-ch="${ch}">
+      <span class="q-num">${idx + 1}.</span>
+      <span class="q-text" contenteditable="true" role="textbox" aria-label="Discussion question ${idx + 1}">${escapeHtml(q)}</span>
+      <button type="button" class="q-remove" title="Remove question" aria-label="Remove question">×</button>
+    </li>`).join('');
+}
+
+function readChapterFromDOM(ch) {
+  const appEl = document.querySelector(`.editable-app[data-ch="${ch}"]`);
+  const items = [...document.querySelectorAll(`ol.editable-q[data-ch="${ch}"] .q-text`)];
+  return {
+    app: appEl?.innerText.trim() || '',
+    questions: items.map(el => el.innerText.trim()).filter(Boolean)
+  };
+}
+
+function showSaved() {
+  const toast = document.getElementById('save-toast');
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+function persistChapter(ch) {
+  const all = getEdits();
+  all[ch] = readChapterFromDOM(ch);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  showSaved();
+}
+
+function scheduleSave(ch) {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => persistChapter(ch), 400);
+}
+
+function renumberQuestions(ch) {
+  document.querySelectorAll(`ol.editable-q[data-ch="${ch}"] .q-num`).forEach((el, i) => {
+    el.textContent = (i + 1) + '.';
+  });
+}
+
+function addQuestion(ch) {
+  const ol = document.querySelector(`ol.editable-q[data-ch="${ch}"]`);
+  const li = document.createElement('li');
+  li.className = 'q-item';
+  li.dataset.ch = ch;
+  li.innerHTML = `
+    <span class="q-num"></span>
+    <span class="q-text" contenteditable="true" role="textbox" aria-label="Discussion question"></span>
+    <button type="button" class="q-remove" title="Remove question" aria-label="Remove question">×</button>`;
+  ol.appendChild(li);
+  renumberQuestions(ch);
+  bindQuestionItem(li, ch);
+  li.querySelector('.q-text').focus();
+  persistChapter(ch);
+}
+
+function bindQuestionItem(li, ch) {
+  const text = li.querySelector('.q-text');
+  const btn = li.querySelector('.q-remove');
+  text.addEventListener('input', () => scheduleSave(ch));
+  text.addEventListener('blur', () => {
+    if (!text.innerText.trim()) {
+      li.remove();
+      renumberQuestions(ch);
+    }
+    persistChapter(ch);
+  });
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    li.remove();
+    renumberQuestions(ch);
+    persistChapter(ch);
+  });
+}
+
+function bindEditableSections() {
+  document.querySelectorAll('.editable-app').forEach(el => {
+    const ch = el.dataset.ch;
+    el.addEventListener('input', () => scheduleSave(ch));
+    el.addEventListener('blur', () => persistChapter(ch));
+  });
+  document.querySelectorAll('.q-item').forEach(li => bindQuestionItem(li, li.dataset.ch));
+  document.querySelectorAll('.btn-add-q').forEach(btn => {
+    btn.addEventListener('click', () => addQuestion(btn.dataset.ch));
+  });
+}
+
+function resetAllEdits() {
+  if (!confirm('Reset Application and Discussion for all chapters back to the original text?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+document.getElementById('reset-edits').addEventListener('click', resetAllEdits);
+
+// ─────────────────────────────────────────────
 // BUILD DOM
 // ─────────────────────────────────────────────
 const wrap = document.getElementById('chapters');
 const chipBar = document.getElementById('chips');
 
 chapters.forEach((c, i) => {
-  // chip
+  const content = getChapterContent(c);
+
   const chip = document.createElement('button');
   chip.className = 'chip';
   chip.textContent = c.n;
@@ -1147,13 +1306,12 @@ chapters.forEach((c, i) => {
   chip.onclick = () => document.getElementById('ch' + c.n).scrollIntoView({behavior:'smooth'});
   chipBar.appendChild(chip);
 
-  // build verses
   const versesHTML = c.verses.map(v =>
     `<div class="verse-card"><div class="ref">${v.ref}</div><div class="txt">${v.txt}</div></div>`
   ).join('');
 
   const themesHTML = c.themes.map(t => `<span class="theme">${t}</span>`).join('');
-  const qHTML = c.questions.map(q => `<li>${q}</li>`).join('');
+  const qHTML = buildQuestionItems(content.questions, c.n);
   const sec = document.createElement('section');
   sec.id = 'ch' + c.n;
   sec.className = 'reveal';
@@ -1178,16 +1336,24 @@ chapters.forEach((c, i) => {
     <div class="block-label">Key Verses</div>${versesHTML}
     <div class="block-label">Themes</div><div class="themes">${themesHTML}</div>
     <div class="panel app">
-      <div class="block-label" style="margin-top:0">Application</div>
-      <p style="margin-bottom:0">${c.app}</p>
+      <div class="block-label-row">
+        <div class="block-label" style="margin:0">Application</div>
+        <span class="edit-tag">click to edit</span>
+      </div>
+      <div class="editable-app" contenteditable="true" data-ch="${c.n}" role="textbox" aria-label="Application notes for chapter ${c.n}">${escapeHtml(content.app)}</div>
     </div>
-    <div class="block-label">Discussion Questions</div>
-    <ol class="q">${qHTML}</ol>
+    <div class="block-label-row">
+      <div class="block-label">Discussion Questions</div>
+      <button type="button" class="btn-add-q" data-ch="${c.n}">+ Add question</button>
+    </div>
+    <ol class="q editable-q" data-ch="${c.n}">${qHTML}</ol>
     ${i < chapters.length - 1 ? '<div class="divider"></div>' : ''}
   `;
 
   wrap.appendChild(sec);
 });
+
+bindEditableSections();
 
 // ─────────────────────────────────────────────
 // PAUSE / PLAY logic
