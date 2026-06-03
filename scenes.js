@@ -2,23 +2,7 @@
 const scenes = {
   1: `<div class="scene-sketch"><img src="images/ch1.png" alt="Esther 1 — King commands Vashti; she refuses" width="700" height="auto"></div>`,
 
-  2: `<div class="scene-sketch"><svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" aria-label="Esther crowned queen">
-    <rect width="700" height="280" fill="#F5EDE4"/>
-    <text x="350" y="28" font-family="Georgia,serif" font-size="14" fill="#5c4030" text-anchor="middle" font-style="italic">Esther 2 — A new queen</text>
-    <rect x="280" y="200" width="140" height="12" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-    <path d="M310 200 L320 120 L340 145 L350 95 L360 145 L380 120 L390 200 Z" fill="none" stroke="#3D2B1F" stroke-width="2.5"/>
-    <circle cx="350" cy="175" r="18" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-    <path d="M335 168 Q350 155 365 168" fill="none" stroke="#3D2B1F" stroke-width="1.5"/>
-    <text x="350" y="250" font-family="sans-serif" font-size="11" fill="#5c4030" text-anchor="middle">Crowned</text>
-    <g transform="translate(520,80)">
-      <circle cx="0" cy="50" r="14" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-      <path d="M-12 65 Q0 45 12 65 L8 120 Q0 115 -8 120 Z" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-      <path d="M-20 75 Q-35 60 -25 50" fill="none" stroke="#3D2B1F" stroke-width="1.5"/>
-      <text x="0" y="145" font-size="10" fill="#5c4030" text-anchor="middle">Mordecai hears</text>
-      <ellipse cx="25" cy="35" rx="28" ry="12" fill="none" stroke="#3D2B1F" stroke-width="1.5"/>
-      <text x="25" y="39" font-size="8" fill="#5c4030" text-anchor="middle">a plot...</text>
-    </g>
-  </svg></div>`,
+  2: `<div class="scene-sketch"><img src="images/ch2.png" alt="Esther 2 — Esther's coronation and Mordecai spying on the plot" width="700" height="auto"></div>`,
 
   3: `<div class="scene-sketch"><svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" aria-label="Mordecai refuses to bow">
     <rect width="700" height="280" fill="#F5EDE4"/>
