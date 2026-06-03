@@ -27,26 +27,7 @@ const scenes = {
     </g>
   </svg></div>`,
 
-  4: `<div class="scene-sketch"><svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" aria-label="For such a time as this">
-    <rect width="700" height="280" fill="#F5EDE4"/>
-    <text x="350" y="28" font-family="Georgia,serif" font-size="14" fill="#5c4030" text-anchor="middle" font-style="italic">Esther 4 — For such a time as this</text>
-    <g transform="translate(130,100)">
-      <circle cx="0" cy="30" r="16" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-      <path d="M0 46 L0 120 M-20 70 L-35 55 M20 70 L35 55" stroke="#3D2B1F" stroke-width="2"/>
-      <path d="M-8 25 Q0 35 8 25" fill="none" stroke="#3D2B1F" stroke-width="1.5"/>
-      <text x="0" y="140" font-size="10" fill="#5c4030" text-anchor="middle">Mordecai</text>
-    </g>
-    <rect x="220" y="85" width="260" height="70" rx="8" fill="#fff" stroke="#3D2B1F" stroke-width="2"/>
-    <text x="350" y="115" font-family="Georgia,serif" font-size="16" fill="#3D2B1F" text-anchor="middle" font-weight="bold">"For such a time</text>
-    <text x="350" y="138" font-family="Georgia,serif" font-size="16" fill="#3D2B1F" text-anchor="middle" font-weight="bold">as this?"</text>
-    <g transform="translate(560,95)">
-      <circle cx="0" cy="28" r="16" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-      <path d="M-12 44 L12 44 L8 115 L-8 115 Z" fill="none" stroke="#3D2B1F" stroke-width="2"/>
-      <path d="M-5 20 L0 8 L5 20" fill="none" stroke="#3D2B1F" stroke-width="1.5"/>
-      <text x="0" y="135" font-size="10" fill="#5c4030" text-anchor="middle">Esther</text>
-    </g>
-    <text x="350" y="230" font-family="sans-serif" font-size="11" fill="#5c4030" text-anchor="middle">If I perish, I perish.</text>
-  </svg></div>`,
+  4: `<div class="scene-sketch"><img src="images/ch4.png" alt="Esther 4 — For such a time as this" width="700" height="auto"></div>`,
 
   5: `<div class="scene-sketch"><svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" aria-label="Esther approaches the king">
     <rect width="700" height="280" fill="#F5EDE4"/>
