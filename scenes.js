@@ -27,7 +27,7 @@ const scenes = {
     </g>
   </svg></div>`,
 
-  4: `<div class="scene-sketch"><img src="images/ch4.png" alt="Esther 4 — For such a time as this" width="700" height="auto"></div>`,
+  4: `<div class="scene-sketch"><img src="images/ch4.png" alt="Esther 4 — Esther touches the king's golden sceptre" width="700" height="auto"></div>`,
 
   5: `<div class="scene-sketch"><svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" aria-label="Esther approaches the king">
     <rect width="700" height="280" fill="#F5EDE4"/>
