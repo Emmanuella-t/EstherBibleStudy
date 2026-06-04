@@ -380,7 +380,9 @@ async function loadSharedEdits() {
     const { data, error } = await supabaseClient.from('chapter_edits').select('chapter, app, questions');
     if (error) {
       console.error(error);
+      const el = document.getElementById('sync-status');
       setSyncStatus('error', 'Sync error');
+      if (el) el.title = 'Supabase permissions need fixing — run supabase-fix.sql in your Supabase SQL Editor, then refresh.';
       sharedEdits = getEdits();
       return;
     }

@@ -32,7 +32,16 @@ create policy "Anyone can update edits"
 
 create policy "Anyone can delete edits"
   on chapter_edits for delete using (true);
+
+-- Required: allow the website to access the table
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on table public.chapter_edits to anon;
+grant select, insert, update, delete on table public.chapter_edits to authenticated;
 ```
+
+### If you see "Sync error" on the site
+
+Run the file **`supabase-fix.sql`** in **SQL Editor** → **New query** → **Run**. Refresh the site; the nav should say **Live sync**.
 
 ## 3. Copy your API keys
 
