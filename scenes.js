@@ -1,5 +1,5 @@
 // Chapter illustrations : your hand-drawn sketches (bump IMG_V when you replace a sketch)
-const IMG_V = '20260604';
+const IMG_V = 'a6641f4';
 const scenes = {
   1: `<div class="scene-sketch"><img loading="lazy" decoding="async" src="images/ch1.png?v=${IMG_V}" alt="Esther 1 : King commands Vashti; she refuses" width="700" height="auto"></div>`,
   2: `<div class="scene-sketch"><img loading="lazy" decoding="async" src="images/ch2.png?v=${IMG_V}" alt="Esther 2 : Esther's coronation and Mordecai spying on the plot" width="700" height="auto"></div>`,
