@@ -130,7 +130,7 @@ p{margin-bottom:1rem;color:var(--ink);}
   text-transform:uppercase;color:var(--cream);margin-bottom:.4rem;}
 .verse-card .txt{font-family:'Fraunces',serif;font-style:italic;font-weight:500;
   font-size:clamp(1.05rem,3.5vw,1.28rem);line-height:1.45;}
-.editable-app,ol.q .q-text{overflow-wrap:break-word;word-break:break-word}
+.editable-app,ol.q .q-text{white-space:pre-wrap;tab-size:4;overflow-wrap:break-word;word-break:break-word}
 .themes{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0 0;}
 .theme{font-family:'Quicksand',sans-serif;font-weight:600;font-size:.78rem;border-radius:30px;
   padding:.35rem .85rem;color:#fff;background:linear-gradient(135deg,var(--purple),var(--grape));}
@@ -152,7 +152,7 @@ ol.q .q-text:empty::before{content:'Type a question…';color:var(--rose);opacit
   font-family:'Quicksand',sans-serif;font-weight:700;transition:.2s;margin-top:.05rem;}
 .q-remove:hover{background:var(--rose-deep);color:#fff;}
 .editable-app{outline:none;color:var(--ink-soft);line-height:1.75;margin:0;min-height:3rem;
-  padding:.25rem 0;border-radius:8px;cursor:text;}
+  padding:.25rem 0;border-radius:8px;cursor:text;display:block;width:100%;}
 .editable-app:focus{background:rgba(255,255,255,.45);box-shadow:0 0 0 2px rgba(186,64,115,.2);}
 .editable-app:empty::before{content:'Click to add application notes…';color:var(--rose);opacity:.45;}
 .block-label-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin:1.8rem 0 .7rem;}
@@ -316,8 +316,8 @@ footer{text-align:center;padding:4rem 1.5rem 5rem;color:var(--purple);font-famil
 <div id="save-toast" role="status" aria-live="polite">Saved</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="scenes.js?v=a6641f4"></script>
-<script src="config.js?v=a6641f4"></script>
+<script src="scenes.js?v=95e2f66"></script>
+<script src="config.js?v=95e2f66"></script>
 <script>
 // ─────────────────────────────────────────────
 // Chapter illustrations loaded from scenes.js
@@ -415,8 +415,8 @@ function getEdits() {
 function getChapterContent(c) {
   const saved = sharedEdits[c.n];
   return {
-    app: saved?.app ?? c.app,
-    questions: saved?.questions?.length ? saved.questions : [...c.questions]
+    app: normalizeEditableText(saved?.app ?? c.app),
+    questions: saved?.questions?.length ? saved.questions.map(normalizeEditableText) : [...c.questions]
   };
 }
 
@@ -449,8 +449,8 @@ async function loadSharedEdits() {
     sharedEdits = {};
     (data || []).forEach(row => {
       sharedEdits[row.chapter] = {
-        app: row.app || '',
-        questions: Array.isArray(row.questions) ? row.questions : []
+        app: normalizeEditableText(row.app || ''),
+        questions: (Array.isArray(row.questions) ? row.questions : []).map(normalizeEditableText)
       };
     });
     setSyncStatus('live', 'Live sync');
@@ -472,8 +472,10 @@ function applyRemoteChapter(ch, data) {
   const appEl = document.querySelector(`.editable-app[data-ch="${ch}"]`);
   const ol = document.querySelector(`ol.editable-q[data-ch="${ch}"]`);
   if (!appEl || !ol) return;
-  appEl.innerText = data.app || '';
+  writeEditableText(appEl, data.app || '');
   ol.innerHTML = buildQuestionItems(data.questions || [], ch);
+  const qTexts = ol.querySelectorAll('.q-text');
+  (data.questions || []).forEach((q, i) => writeEditableText(qTexts[i], q));
   ol.querySelectorAll('.q-item').forEach(li => bindQuestionItem(li, ch));
   sharedEdits[ch] = data;
 }
@@ -494,29 +496,41 @@ function subscribeRealtime() {
     .subscribe();
 }
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function normalizeEditableText(s) {
+  return String(s ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+function readEditableText(el) {
+  if (!el) return '';
+  return normalizeEditableText(el.innerText);
+}
+
+function writeEditableText(el, text) {
+  if (!el) return;
+  el.innerText = normalizeEditableText(text);
 }
 
 function buildQuestionItems(questions, ch) {
-  return questions.map((q, idx) => `
+  return questions.map((_, idx) => `
     <li class="q-item" data-ch="${ch}">
       <span class="q-num">${idx + 1}.</span>
-      <span class="q-text" contenteditable="true" role="textbox" aria-label="Discussion question ${idx + 1}">${escapeHtml(q)}</span>
+      <span class="q-text" contenteditable="true" role="textbox" aria-label="Discussion question ${idx + 1}"></span>
       <button type="button" class="q-remove" title="Remove question" aria-label="Remove question">×</button>
     </li>`).join('');
+}
+
+function fillChapterEdits(sec, content) {
+  writeEditableText(sec.querySelector('.editable-app'), content.app);
+  const qTexts = sec.querySelectorAll('.q-text');
+  content.questions.forEach((q, i) => writeEditableText(qTexts[i], q));
 }
 
 function readChapterFromDOM(ch) {
   const appEl = document.querySelector(`.editable-app[data-ch="${ch}"]`);
   const items = [...document.querySelectorAll(`ol.editable-q[data-ch="${ch}"] .q-text`)];
   return {
-    app: appEl?.innerText.trim() || '',
-    questions: items.map(el => el.innerText.trim()).filter(Boolean)
+    app: readEditableText(appEl),
+    questions: items.map(readEditableText).filter(q => q.trim().length > 0)
   };
 }
 
@@ -582,9 +596,18 @@ function addQuestion(ch) {
   persistChapter(ch);
 }
 
+function bindEditablePaste(el) {
+  el.addEventListener('paste', e => {
+    e.preventDefault();
+    const plain = normalizeEditableText(e.clipboardData.getData('text/plain'));
+    document.execCommand('insertText', false, plain);
+  });
+}
+
 function bindQuestionItem(li, ch) {
   const text = li.querySelector('.q-text');
   const btn = li.querySelector('.q-remove');
+  bindEditablePaste(text);
   text.addEventListener('input', () => scheduleSave(ch));
   text.addEventListener('blur', () => {
     if (!text.innerText.trim()) {
@@ -604,6 +627,7 @@ function bindQuestionItem(li, ch) {
 function bindEditableSections() {
   document.querySelectorAll('.editable-app').forEach(el => {
     const ch = el.dataset.ch;
+    bindEditablePaste(el);
     el.addEventListener('input', () => scheduleSave(ch));
     el.addEventListener('blur', () => persistChapter(ch));
   });
@@ -684,7 +708,7 @@ chapters.forEach((c, i) => {
         <div class="block-label" style="margin:0">Application</div>
         <span class="edit-tag">click to edit</span>
       </div>
-      <div class="editable-app" contenteditable="true" data-ch="${c.n}" role="textbox" aria-label="Application notes for chapter ${c.n}">${escapeHtml(content.app)}</div>
+      <div class="editable-app" contenteditable="true" data-ch="${c.n}" role="textbox" aria-label="Application notes for chapter ${c.n}" spellcheck="true"></div>
     </div>
     <div class="block-label-row">
       <div class="block-label">Discussion Questions</div>
@@ -692,6 +716,7 @@ chapters.forEach((c, i) => {
     </div>
     <ol class="q editable-q" data-ch="${c.n}">${qHTML}</ol>
   `;
+  fillChapterEdits(sec, content);
 
   wrap.appendChild(sec);
 });
